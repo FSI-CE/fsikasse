@@ -375,7 +375,7 @@ def collect_money(username):
         abort(404)
 
     if request.method == 'GET':
-        cur.execute('SELECT name FROM user WHERE active=1 and direct_payment=0 and name!=? ORDER BY name', [username])
+        cur.execute('SELECT name FROM user WHERE browsable=1 and active=1 and direct_payment=0 and name!=? ORDER BY name', [username])
         users = cur.fetchall()
         return render_template('user_collect.html', title="Einsammeln " + user['name'], user=user, users=users, return_to_userpage=True)
     
