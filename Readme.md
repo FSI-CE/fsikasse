@@ -23,6 +23,17 @@ From now on it is sufficient to start fsikasse with:
 
     $ FLASK_APP=fsikasse.py flask run
 
+## Backup (optional)
+
+The FSI-Kasse comes with a neat little backup script. It requires rsync and sqlite3 to be installed.
+First a local backup of the database and the static/ directory is created. Afterwards the backup directory is synchronized with rsync.
+
+The backup directories should be configured to your own preferences.
+
+It is installed by running
+
+    $ ./backup.sh install
+
 ## Update (experimental)
 
 If you have cloned the repository, you can run the following commands to update the fsikasse:
