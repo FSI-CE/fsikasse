@@ -48,6 +48,9 @@ app.config.update(dict(
 def randomword(length):
    return ''.join(random.choice(string.ascii_lowercase) for i in range(length))
 
+def sanitize_input(input):
+    return input.replace('/', '_')
+
 def connect_db():
     """Connects to the specific database."""
     rv = sqlite3.connect(app.config['DATABASE'])
@@ -186,6 +189,7 @@ def edit_item_properties(item_name):
     price     = request.form['price']
     active    = False if not 'active' in request.form else request.form.get('active') == 'on'
     product   = False if not 'product' in request.form else request.form.get('product') == 'on'
+    name      = sanitize_input(name)
 
     filename = item['image_path']
     if 'image' in request.files and request.files['image'].filename != '':
@@ -270,7 +274,7 @@ def add_item():
 
     db = get_db()
     db.execute('INSERT INTO valuable (name, active, unit_name, price, image_path, product) VALUES  (?, ?, ?, ?, ?, ?)',
-        [request.form['name'], active, request.form['unit_name'], request.form['price'], filename, product])
+        [sanitize_input(request.form['name']), active, request.form['unit_name'], request.form['price'], filename, product])
     db.commit()
 
     return redirect(url_for('admin_index'))
@@ -463,8 +467,9 @@ def edit_userprofile(username):
             im.thumbnail(app.config['PROFILE_IMAGE_SIZE'], Image.ANTIALIAS)
             im.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
+        name = sanitize_input(request.form['name'])
         cur.execute('UPDATE user SET name=?, mail=?, image_path=? WHERE name=?',
-                   [request.form['name'], request.form['mail'], filename, username])
+                   [name, request.form['mail'], filename, username])
         db.commit()
 
         if 'image' in request.files and user['image_path']:
@@ -472,7 +477,7 @@ def edit_userprofile(username):
             os.unlink(os.path.join(app.config['UPLOAD_FOLDER'], user['image_path']))
 
         flash(u'Benutzerprofil erfolgreich aktualisiert!')
-        return redirect(url_for('edit_userprofile', username=request.form['name']))
+        return redirect(url_for('edit_userprofile', username=name))
 
 @app.route('/user/active', methods=['POST', 'GET'])
 def activate_user():
@@ -529,10 +534,11 @@ def add_user():
         else:
             filename = None
 
+        name = sanitize_input(request.form['name'])
         cur.execute('INSERT INTO user (name, mail, image_path) VALUES (?, ?, ?)',
-                   [request.form['name'], request.form['mail'], filename])
+                   [name, request.form['mail'], filename])
         db.commit()
-        return redirect(url_for('edit_userprofile', username=request.form['name']))
+        return redirect(url_for('edit_userprofile', username=name))
 
 @app.route('/user/<username>/add', methods=['POST'])
 def add_to_account(username):
