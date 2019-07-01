@@ -1,7 +1,71 @@
 {% extends "layout.html" %}
 
 {% block head %}
-<script type="text/javascript" src="{{ url_for('static', filename='js/select.js') }}"></script>
+<style>
+  /* The container */
+  .container {
+    display: block;
+    position: relative;
+    padding-left: 35px;
+    padding-bottom: 10px;
+    margin: 5px;
+    cursor: pointer;
+    font-size: 21px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Hide the browser's default checkbox */
+  .container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+
+  /* Create a custom checkbox */
+  .checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 30px;
+    width: 30px;
+    background-color: #eee;
+  }
+
+  /* When the checkbox is checked, add a blue background */
+  .container input:checked~.checkmark {
+    background-color: #009900;
+  }
+
+  /* Create the checkmark/indicator (hidden when not checked) */
+  .checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+  }
+
+  /* Show the checkmark when checked */
+  .container input:checked~.checkmark:after {
+    display: block;
+  }
+
+  /* Style the checkmark/indicator */
+  .container .checkmark:after {
+    left: 10px;
+    top: 4px;
+    width: 8px;
+    height: 15px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
+  }
+</style>
 {% endblock %}
 
 {% block body %}
@@ -18,19 +82,24 @@
         <input type="text" name="comment" />
       </li>
       <li>Gesamtbetrag:
-        <input type="number" class="input_number" id="sub_from_account_amount" min="0" step="0.01" name="amount" value="0.00" onFocus="numpadShow(this.id);" />
+        <input type="number" class="input_number" id="sub_from_account_amount" min="0" step="0.01" name="amount"
+          value="0.00" onFocus="numpadShow(this.id);" />
         <input type="submit" value="Einsammeln" />
       </li>
     </ul>
   </div>
 
   <div class="users">
-    <select multiple id="user_select" name="user_select">
-      <option value="{{user.name}}" selected>{{user.name}}</option>
-      {% for u in users %}
-      <option value="{{ u.name }}">{{ u.name }}</option>
-      {% endfor %}
-    </select>
+    <label class="container">{{user.name}}
+      <input type="checkbox" value="{{user.name}}" id="{{user.name}}" name="user_select" checked>
+      <span class="checkmark"></span>
+    </label>
+    {% for u in users %}
+    <label class="container">{{u.name}}
+      <input type="checkbox" value="{{u.name}}" id="{{u.name}}" name="user_select">
+      <span class="checkmark"></span>
+    </label>
+    {% endfor %}
   </div>
 </form>
 {% endblock %}
