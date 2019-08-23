@@ -199,11 +199,9 @@ div.side
 {
 	float: left;
 
-	width: 15%;
-	min-width: calc( 200px + 5px + 10px + 1px );
+	width: calc( 200px + 5px + 10px + 1px );
 
-	min-height: calc( 100vh - 52px - 51px );
-	max-height: calc( 100vh - 52px - 51px );
+	height: calc( 100vh - 52px - 51px );
 
 	padding: 10px 5px 5px 5px;
 
@@ -388,9 +386,8 @@ div.products
 	float: right;
 	overflow-y: scroll;
 
-	width: calc(85% - 1px - 5px - 5px );
-	min-height: calc( 100vh - 51px - 52px );
-	max-height: calc( 100vh - 51px - 52px );
+	width: calc( 100% - ( 200px + 5px + 10px + 1px ) - 1px - 5px - 5px );
+	height: calc( 100vh - 51px - 52px );
 	margin: 0;
 	padding: 0;
 }
