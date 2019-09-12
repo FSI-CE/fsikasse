@@ -2,6 +2,7 @@
 kasse.db
 static/products/*
 static/users/*
+!static/users/shame.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

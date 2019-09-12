@@ -52,8 +52,6 @@ h1
 
 	color: #2e3436;
 	border-bottom: 1px solid rgb(161,161,161);
-	background-image: -webkit-linear-gradient(90deg,#f8f8f8,#e0e0e0);
-	background-image:    -moz-linear-gradient(90deg,#f8f8f8,#e0e0e0);
 }
 
 h2
@@ -177,8 +175,6 @@ div.user img
 
 	width: 150px;
 	height: 200px;
-
-	-webkit-box-reflect: below 0 -webkit-gradient(linear, left top, left bottom, from(transparent), color-stop(80%, transparent) , to(rgba(250, 250, 250, .2)));
 }
 
 div.user span.new
@@ -291,14 +287,7 @@ input[type='submit']
 	color: black;
 	border: 1px solid rgb(190,190,190);
 	border-radius: 2px;
-	background: -webkit-linear-gradient(-90deg,rgb(247,247,247),rgb(220,220,220));
 	box-shadow: 0 1px white;
-}
-
-input[type='submit']:focus,
-input[type='submit']:active
-{
-	background: -webkit-linear-gradient(90deg,rgb(247,247,247),rgb(220,220,220));
 }
 
 .input_update
@@ -344,8 +333,6 @@ div.side div.user img
 	/* how to get 4:3 aspect ratio with 100% width?; */
 	/*width: calc( 100% );*/
 	height: 200px;
-
-	-webkit-box-reflect: below 0 -webkit-gradient(linear, left top, left bottom, from(transparent), color-stop(80%, transparent) , to(rgba(250, 250, 250, .2)));
 }
 
 div.side .change_info .form_input
@@ -431,8 +418,6 @@ div.prod
 	width: auto;
 	height: 230px;
 	margin: 0 auto;
-
-	-webkit-box-reflect: below 0 -webkit-gradient(linear, left top, left bottom, from(transparent), color-stop(80%, transparent) , to(rgba(250, 250, 250, .2)));
 }
 
 div.prod .prod_name
@@ -730,9 +715,8 @@ div.users
 	float: right;
 	overflow-y: scroll;
 
-	width: calc(85% - 1px - 5px - 5px );
-	min-height: calc( 100vh - 51px - 52px );
-	max-height: calc( 100vh - 51px - 52px );
+	width: calc( 100% - ( 200px + 5px + 10px + 1px ) - 1px - 5px - 5px );
+	height: calc( 100vh - 51px - 52px );
 	margin: 0;
 	padding: 0;
 }

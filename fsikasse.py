@@ -100,7 +100,7 @@ def show_index():
     cur = db.execute("""
 SELECT name, 
     CASE
-    WHEN balance<-1000 then 'users/shame.gif'
+    WHEN balance<-1000 then 'users/shame.png'
     ELSE image_path
     END AS image_path,
 balance, umsatz * 100.0 / (SELECT SUM(umsatz) FROM `index`) AS prio FROM `index`""")
@@ -116,7 +116,7 @@ def admin_index():
     cur = db.execute("""
 SELECT name, 
     CASE
-    WHEN balance<-1000 then 'users/shame.gif'
+    WHEN balance<-1000 then 'users/shame.png'
     ELSE image_path
     END AS image_path,
 balance, umsatz * 100.0 / (SELECT SUM(umsatz) FROM `index`) AS prio FROM `index`""")
