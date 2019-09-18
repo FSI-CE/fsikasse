@@ -41,16 +41,24 @@ CREATE TABLE IF NOT EXISTS `user` (
     `active`             INTEGER NOT NULL DEFAULT 1,
     `tax`                INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS `balance` (
+    `account_id`     INT NOT NULL,
+    `valuable_id`    INT NOT NULL,
+    `balance`        INT NOT NULL DEFAULT 0,
+    UNIQUE(account_id, valuable_id)
+);
 
 CREATE VIEW IF NOT EXISTS `account_valuable_balance` AS
     SELECT
         user.name AS account_name,
-        account_id,
+        balance.account_id AS account_id,
         valuable.name AS valuable_name,
-        valuable_id,
-        ifnull((SELECT sum(ifnull(amount,0)) FROM transfer WHERE to_id = account_id AND valuable_id = valuable.valuable_id),0)-ifnull((SELECT sum(ifnull(amount,0)) FROM transfer WHERE from_id = account_id AND valuable_id = valuable.valuable_id),0) AS balance,
+        balance.valuable_id,
+        balance,
         valuable.unit_name AS unit_name
-    FROM user, valuable
+    FROM balance
+	INNER JOIN user ON user.account_id=balance.account_id
+	INNER JOIN valuable ON valuable.valuable_id=balance.valuable_id
     ORDER BY account_id;
 
 -- detailed transfer history, canceled transactions are hidden

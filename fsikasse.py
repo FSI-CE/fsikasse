@@ -45,6 +45,31 @@ app.config.update(dict(
     SECRET_KEY='development key',
 ))
 
+
+def generate_transaction(db, msg: str = "") -> int:
+    cur = db.execute('INSERT INTO `transaction` (comment, datetime) VALUES (?, ?)', [
+                     msg, datetime.now()])
+    return cur.lastrowid
+
+
+def apply_transfer(db, from_id: int, to_id: int, valuable_id: int, transaction_id: int, amount: int = 1):
+    db.execute('INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) VALUES (?, ?, ?, ?, ?)', [
+               from_id, to_id, valuable_id, amount, transaction_id])
+    if from_id is not None:
+        db.execute("""
+INSERT OR REPLACE INTO balance (account_id, valuable_id, balance)
+VALUES(
+?, ?, (SELECT ifnull(max(balance), 0) FROM balance WHERE account_id=? and valuable_id=?)-?
+);
+    """, [from_id, valuable_id, from_id, valuable_id, amount])
+    if to_id is not None:
+        db.execute("""
+INSERT OR REPLACE INTO balance (account_id, valuable_id, balance)
+VALUES(
+?, ?, (SELECT ifnull(max(balance), 0) FROM balance WHERE account_id=? and valuable_id=?)+?
+);
+    """, [to_id, valuable_id, to_id, valuable_id, amount])
+
 def randomword(length):
    return ''.join(random.choice(string.ascii_lowercase) for i in range(length))
 
@@ -148,19 +173,13 @@ def admin_lieferung():
         return render_template('admin_lieferung.html', title="Neue Lieferung eintragen", admin_panel=True, valuable=valuable )
 
     if request.method == 'POST':
+        transaction_id = generate_transaction(db, 'Lieferung')
         for v in valuable:
-            modified_value = int(request.form[v['valuable_name']])
-            if modified_value is not 0:
-                modified_value = modified_value + v['balance']
-                # generate transaction
-                cur.execute('INSERT INTO `transaction` (comment, datetime) VALUES (?, ?)', ['Einzahlung Lieferung', datetime.now()])
-                transaction_id = cur.lastrowid
-                cur.execute('INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) VALUES  (?, ?, ?, ?, ?)', [None, app.config['STORAGE_ACCOUNT'][0], int(v['valuable_id']), request.form[v['valuable_name']], transaction_id])
-                # cur.execute('INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) VALUES  (?, ?, ?, ?, ?)', [app.config['STORAGE_ACCOUNT'][0], None, app.config['MONEY_VALUABLE_ID'], valuable['price'], transaction_id])
-                # save new amount
-                # cur.execute('UPDATE account_valuable_balance SET amount=? WHERE valuable_id = ?', [modified_value, int(v['valuable_id'])])
-                # commit to database
-                db.commit()
+            amount = int(request.form[v['valuable_name']])
+            if amount is not 0:
+                apply_transfer(db, None, app.config['STORAGE_ACCOUNT'][0], int(
+                    v['valuable_id']), transaction_id, amount)
+        db.commit()
 
         flash('Neue Lieferung entgegengenommen!')
         return redirect(url_for('admin_index'))
@@ -324,13 +343,15 @@ def action_buy(username, valuablename):
         
     cur.execute('SELECT valuable.valuable_id, price+tax AS price FROM valuable, user WHERE product=1 and valuable.name=? and user.name=?', [valuablename, username])
     valuable = cur.fetchone()
-    cur.execute('INSERT INTO `transaction` (datetime) VALUES (?)', [datetime.now()])
-    transaction_id = cur.lastrowid
-    cur.execute('INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) VALUES  (?, ?, ?, ?, ?)', [app.config['STORAGE_ACCOUNT'][0], user['account_id'], valuable['valuable_id'], 1, transaction_id])
+    transaction_id = generate_transaction(db)
+    apply_transfer(db, app.config['STORAGE_ACCOUNT'][0],
+                   user['account_id'], valuable['valuable_id'], transaction_id, 1)
     if not user['direct_payment']:
-        cur.execute('INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) VALUES  (?, ?, ?, ?, ?)', [user['account_id'], None, app.config['MONEY_VALUABLE_ID'], valuable['price'], transaction_id])
+        apply_transfer(db, user['account_id'], None,
+                       app.config['MONEY_VALUABLE_ID'], transaction_id, valuable['price'])
     else:
-        cur.execute('INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) VALUES  (?, ?, ?, ?, ?)', [None, app.config['CASH_IN_ACCOUNT'][0], app.config['MONEY_VALUABLE_ID'], valuable['price'], transaction_id])
+        apply_transfer(db, None, app.config['CASH_IN_ACCOUNT'][0],
+                       app.config['MONEY_VALUABLE_ID'], transaction_id, valuable['price'])
     db.commit()
 
     if user['direct_payment']:
@@ -360,10 +381,10 @@ def transfer_money(username):
         flash(u'Keine Transaktion durchgeführt.')
         return redirect(url_for('show_index'))
 
-    cur.execute('INSERT INTO `transaction` (datetime, comment) VALUES (?, ?)', [datetime.now(), 'Überweisung von %.2f€' % (float(amount)/100)])
-    transaction_id = cur.lastrowid
-    cur.execute('INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) VALUES  (?, ?, ?, ?, ?)',
-        [user['account_id'], to_user['account_id'], app.config['MONEY_VALUABLE_ID'], amount, transaction_id])
+    transaction_id = generate_transaction(
+        db, 'Überweisung von %.2f€' % (float(amount)/100))
+    apply_transfer(db, user['account_id'], to_user['account_id'],
+                   app.config['MONEY_VALUABLE_ID'], transaction_id, amount)
     db.commit()
 
     flash('Geld wurde überwiesen.')
@@ -402,11 +423,12 @@ def collect_money(username):
         if len(user_ids) != len(to_users):
             abort(403)
         
-        cur.execute('INSERT INTO `transaction` (comment, datetime) VALUES (?, ?)', ["Einsammeln von " + request.form['comment'], datetime.now()])
-        transaction_id = cur.lastrowid
+        transaction_id = generate_transaction(
+            db, "Einsammeln von " + request.form['comment'])
         for to_user in user_ids:
             if to_user != user['account_id']:
-                cur.execute('INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) VALUES  (?, ?, ?, ?, ?)', [to_user['account_id'], user['account_id'], app.config['MONEY_VALUABLE_ID'], amount, transaction_id])
+                apply_transfer(db, to_user['account_id'], user['account_id'],
+                               app.config['MONEY_VALUABLE_ID'], transaction_id, amount)
         db.commit()
 
         flash('Geld wurde eingesammelt.')
@@ -557,16 +579,12 @@ def add_to_account(username):
         flash(u'Keine Transaktion durchgeführt.')
         return redirect(url_for('show_index'))
 
-    cur.execute('INSERT INTO `transaction` (datetime, comment) VALUES (?, ?)', [datetime.now(), 'Einzahlung von %.2f€' % (float(amount)/100)])
-    transaction_id = cur.lastrowid
-    cur.execute(
-        'INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) ' +
-            'VALUES  (?, ?, ?, ?, ?)',
-        [None, user['account_id'], app.config['MONEY_VALUABLE_ID'], amount, transaction_id])
-    cur.execute(
-        'INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) ' +
-            'VALUES  (?, ?, ?, ?, ?)',
-        [None, app.config['CASH_IN_ACCOUNT'][0], app.config['MONEY_VALUABLE_ID'], amount, transaction_id])
+    transaction_id = generate_transaction(
+        db, 'Einzahlung von %.2f€' % (float(amount)/100))
+    apply_transfer(db, None, user['account_id'],
+                   app.config['MONEY_VALUABLE_ID'], transaction_id, amount)
+    apply_transfer(db, None, app.config['CASH_IN_ACCOUNT'][0],
+                   app.config['MONEY_VALUABLE_ID'], transaction_id, amount)
     db.commit()
     flash(u'Danke für das Geld :)')
 
@@ -589,16 +607,12 @@ def sub_from_account(username):
         flash(u'Keine Transaktion durchgeführt.')
         return redirect(url_for('show_index'))
 
-    cur.execute('INSERT INTO `transaction` (datetime, comment) VALUES (?, ?)', [datetime.now(), 'Auszahlung von %.2f€' % (float(amount)/100)])
-    transaction_id = cur.lastrowid
-    cur.execute(
-        'INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) ' +
-            'VALUES  (?, ?, ?, ?, ?)',
-        [user['account_id'], None, app.config['MONEY_VALUABLE_ID'], amount, transaction_id])
-    cur.execute(
-        'INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) ' +
-            'VALUES  (?, ?, ?, ?, ?)',
-        [app.config['CASH_IN_ACCOUNT'][0], None, app.config['MONEY_VALUABLE_ID'], amount, transaction_id])
+    transaction_id = generate_transaction(
+        db, 'Auszahlung von %.2f€' % (float(amount)/100))
+    apply_transfer(db, user['account_id'], None,
+                   app.config['MONEY_VALUABLE_ID'], transaction_id, amount)
+    apply_transfer(db, app.config['CASH_IN_ACCOUNT'][0], None,
+                   app.config['MONEY_VALUABLE_ID'], transaction_id, amount)
     db.commit()
     flash(u'Geld wurde abgezogen.')
 
@@ -627,15 +641,13 @@ def cancle_transaction(username, transaction_id):
         [transaction_id])
     transfers = cur.fetchall()
 
-    cur.execute('INSERT INTO `transaction` (datetime, comment) VALUES (?, ?)',
-        [datetime.now(), 'Storno von '+str(transaction_id)+' durch '+username])
-    cancle_transaction_id = cur.lastrowid
+    cancle_transaction_id = generate_transaction(
+        db, 'Storno von '+str(transaction_id)+' durch '+username)
     for t in transfers:
-        cur.execute(
-            'INSERT INTO transfer (from_id, to_id, valuable_id, amount, transaction_id) ' +
-                'VALUES  (?, ?, ?, ?, ?)',
-            [t['to_id'], t['from_id'], t['valuable_id'], t['amount'], cancle_transaction_id])
-    cur.execute('UPDATE `transaction` SET visible = 0 WHERE transaction_id = ?', [transaction_id])
+        apply_transfer(db, t['to_id'], t['from_id'],
+                       t['valuable_id'], cancle_transaction_id, t['amount'])
+    cur.execute('UPDATE `transaction` SET visible = 0 WHERE transaction_id = ?', [
+                transaction_id])
     db.commit()
 
     flash('Buchung wurde storniert.')
