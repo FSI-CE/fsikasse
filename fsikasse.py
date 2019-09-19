@@ -46,6 +46,13 @@ app.config.update(dict(
 ))
 
 
+@app.errorhandler(Exception)
+def modify_error_page(error):
+    """Add a back button to the error pages"""
+    response = '<center>' + error.get_body() + '<h1><a href="/">Back</a></h1></center>'
+    return response, error.code
+
+
 def generate_transaction(db, msg: str = "") -> int:
     cur = db.execute('INSERT INTO `transaction` (comment, datetime) VALUES (?, ?)', [
                      msg, datetime.now()])
@@ -716,6 +723,7 @@ from flask import stream_with_context, request, Response
 
 @app.route('/graphs')
 def graphs():
+    abort(501)
     def stream_template(template_name, **context):
         app.update_template_context(context) 
         t = app.jinja_env.get_template(template_name)
